@@ -8,7 +8,7 @@
 
 <meta name="author" content="Andrew Molo">
 
-<title>LSTM in R</title>
+<title>Sentiment Analysis using LSTM in R</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -110,7 +110,13 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
    
   <ul>
   <li><a href="#introduction" id="toc-introduction" class="nav-link active" data-scroll-target="#introduction">Introduction</a></li>
-  <li><a href="#running-code" id="toc-running-code" class="nav-link" data-scroll-target="#running-code">Running Code</a></li>
+  <li><a href="#r-script" id="toc-r-script" class="nav-link" data-scroll-target="#r-script">R Script</a></li>
+  <li><a href="#natural-language-processing-nlp" id="toc-natural-language-processing-nlp" class="nav-link" data-scroll-target="#natural-language-processing-nlp">Natural Language Processing (NLP)</a>
+  <ul>
+  <li><a href="#wordcloud" id="toc-wordcloud" class="nav-link" data-scroll-target="#wordcloud">Wordcloud</a></li>
+  <li><a href="#long-short-term-memory-lstm" id="toc-long-short-term-memory-lstm" class="nav-link" data-scroll-target="#long-short-term-memory-lstm">Long short-term memory (LSTM)</a></li>
+  <li><a href="#bag-of-words-bow" id="toc-bag-of-words-bow" class="nav-link" data-scroll-target="#bag-of-words-bow">Bag of Words (BoW)</a></li>
+  </ul></li>
   <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li>
   </ul>
 </nav>
@@ -121,7 +127,8 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">LSTM in R</h1>
+<h1 class="title">Sentiment Analysis using LSTM in R</h1>
+<p class="subtitle lead">A classification of COVID-19 Vaccine Tweets in Kenya</p>
 </div>
 
 
@@ -144,24 +151,77 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 
 <section id="introduction" class="level2">
 <h2 class="anchored" data-anchor-id="introduction">Introduction</h2>
-<p>Recurrent Neural Networks (RNN) are widely used for Natural Language Processing (NLP) tasks because they’re good at learning patterns in sequential data such as text.<sup>[<a href="https://www.kaggle.com/code/yashvmohod/coding-11-imdb-sentiment-analysis-with-lstm" target="_blank">1</a>]</sup> LSTM stands for Long Short Term Memory. Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <a href="https://quarto.org" class="uri">https://quarto.org</a>.</p>
+<p>Sentiment Analysis is a function used to get sentiment information from sentences contained in a text. The sentiments generated can either be positive, negative or neutral. In the data science field, technique used for deriving these sentiments is part of a larger discipline called Natural Language Processing (NLP).</p>
+<p>Recurrent Neural Networks (RNN), a machine learning model widely used in NLP, is good at learning patterns on textual data that’s sequential.<sup>[<a href="https://www.kaggle.com/code/yashvmohod/coding-11-imdb-sentiment-analysis-with-lstm" target="_blank">1</a>]</sup> Long short-term memory (LSTM) is a type of RNN with a higher memory power to remember outputs of current nodes for a more extended period to produce outcome(s) for the next node(s).<sup>[<a href="https://www.turing.com/kb/recurrent-neural-networks-and-lstm#long-short-term-memory-(lstm)-in-machine-learning" target="_blank">2</a>]</sup></p>
+<p>Since twitter data contains text patterns that form trending topics and these patterns are somehow interconnected, I’ll use LSTM in classifying COVID-19 vaccine tweets posted by Kenyans on Twitter, popularly known as <em>#KOT</em>.</p>
+
+<!-- Recurrent Neural Networks (RNN) are widely used for  Natural Language Processing (NLP) tasks because they're good at learning patterns in sequential data such as text.^[[1](https://www.kaggle.com/code/yashvmohod/coding-11-imdb-sentiment-analysis-with-lstm){target="_blank"}]^ LSTM stands for Long Short Term Memory.  Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>. -->
 </section>
-<section id="running-code" class="level2">
-<h2 class="anchored" data-anchor-id="running-code">Running Code</h2>
-<p>When you click the <strong>Render</strong> button a document will be generated that includes both content and the output of embedded code. You can embed code like this:</p>
+<section id="r-script" class="level2">
+<h2 class="anchored" data-anchor-id="r-script">R Script</h2>
+<p>Load the sentiment analysis R script</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="dv">1</span> <span class="sc">+</span> <span class="dv">1</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>[1] 2</code></pre>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">source</span>(<span class="st">"Scripts/Sentiment.Analysis.R"</span>, <span class="at">local =</span> knitr<span class="sc">::</span><span class="fu">knit_global</span>())</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-</div>
-<p>You can add options to executable code like this</p>
+</section>
+<section id="natural-language-processing-nlp" class="level2">
+<h2 class="anchored" data-anchor-id="natural-language-processing-nlp">Natural Language Processing (NLP)</h2>
+<section id="wordcloud" class="level3">
+<h3 class="anchored" data-anchor-id="wordcloud">Wordcloud</h3>
+<p>A word cloud constitutes textual data where the size of each text is a representative of its frequency count. The below word cloud shows the how frequent different user locations appeared on the COVID-19 tweets vaccines data frame. Nairobi had the highest tweets, followed by Mombasa then Nakuru. Other popular towns where <em>#KOT</em> posted tweets included Eldoret and Kisumu. There were tweets which were generally geotagged as Kenya.</p>
 <div class="cell">
-<div class="cell-output cell-output-stdout">
-<pre><code>[1] 4</code></pre>
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Create a corpus based in the Location data column</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>LocationCorpus <span class="ot">&lt;-</span> <span class="fu">Corpus</span>(<span class="fu">VectorSource</span>(Data<span class="sc">$</span>user_location_1))</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>LocationDTM <span class="ot">&lt;-</span>  <span class="fu">TermDocumentMatrix</span>(LocationCorpus)</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Create a matrix called LocationM based on Location DocumentTermMatrix</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>LocationM <span class="ot">&lt;-</span> <span class="fu">as.matrix</span>(LocationDTM)</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Get the count per each word and create a dataframe</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>count <span class="ot">&lt;-</span> <span class="fu">sort</span>(<span class="fu">rowSums</span>(LocationM),<span class="at">decreasing=</span><span class="cn">TRUE</span>)</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>DF <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">word =</span> <span class="fu">names</span>(count),<span class="at">freq=</span>count)</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Wordcloud code</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">1234</span>)</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data =</span> DF, </span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>       <span class="fu">aes</span>(<span class="at">label =</span> word, <span class="at">size =</span> freq, <span class="at">col =</span> <span class="fu">as.character</span>(freq))) <span class="sc">+</span> </span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_text_wordcloud</span>(<span class="at">rm_outside =</span> <span class="cn">TRUE</span>, <span class="at">max_steps =</span> <span class="dv">1</span>,</span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>                      <span class="at">grid_size =</span> <span class="dv">9</span>, <span class="at">eccentricity =</span> .<span class="dv">1</span>)<span class="sc">+</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_size_area</span>(<span class="at">max_size =</span> <span class="dv">20</span>)<span class="sc">+</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_color_brewer</span>(<span class="at">palette =</span> <span class="st">"Paired"</span>, <span class="at">direction =</span> <span class="sc">-</span><span class="dv">1</span>)<span class="sc">+</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_void</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="index_files/figure-html/unnamed-chunk-2-1.png" class="img-fluid" width="672"></p>
 </div>
 </div>
-<p>The <code>echo: false</code> option disables the printing of code (only output is displayed).</p>
+</section>
+<section id="long-short-term-memory-lstm" class="level3">
+<h3 class="anchored" data-anchor-id="long-short-term-memory-lstm">Long short-term memory (LSTM)</h3>
+<p>The initial split function create a single binary split of the data into training and testing set. Since we’re working with textual data, we’ll filter data to include only text that has &gt;15 characters. Short texts in this case tweets have uninformative single words. <sup>[<a href="https://smltar.com/dldnn.html#kickstarter" target="_blank">4</a>]</sup></p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Set seed to reproduce this work</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">2345</span>)</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Create a binary split called vaccine.tweets.split</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>vaccine.tweets.split <span class="ot">&lt;-</span> Data <span class="sc">%&gt;%</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="fu">nchar</span>(text)<span class="sc">&gt;=</span> <span class="dv">15</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">initial_split</span>()</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Create training and testing data</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>training.data <span class="ot">&lt;-</span> <span class="fu">training</span>(vaccine.tweets.split)</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>testing.data <span class="ot">&lt;-</span> <span class="fu">testing</span>(vaccine.tweets.split)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="bag-of-words-bow" class="level3">
+<h3 class="anchored" data-anchor-id="bag-of-words-bow">Bag of Words (BoW)</h3>
+<p>Bag of Words (BoW) is a model representation that turns text into fixed length vectors by counting how many times each word appears. This process is also known as vectorisation.<sup>[<a href="https://victorzhou.com/blog/bag-of-words/" target="_blank">3</a>]</sup> First step in this process is tokenisation by unnesting tokens. Below is the code</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Unnest tokens</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>TidyData <span class="ot">&lt;-</span> Data <span class="sc">%&gt;%</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(user_location_1, text) <span class="sc">%&gt;%</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">unnest_tokens</span>(<span class="at">output =</span> word, <span class="at">input =</span> text)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
 </section>
 <section id="references" class="level2">
 <h2 class="anchored" data-anchor-id="references">References</h2>
@@ -169,6 +229,8 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <li>https://www.kaggle.com/code/yashvmohod/coding-11-imdb-sentiment-analysis-with-lstm</li>
 <li>https://www.kaggle.com/code/mich3935/women-revieews</li>
 <li>https://rpubs.com/tangerine/lstm-finance</li>
+<li>https://blog.griddynamics.com/data-scientists-vocabulary-and-scientific-process-applied-to-social-movie-reviews/</li>
+<li>https://www.kaggle.com/code/mich3935/women-revieews</li>
 </ul>
 </section>
 

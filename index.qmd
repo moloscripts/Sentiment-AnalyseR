@@ -1,5 +1,6 @@
 ---
-title: "LSTM in R"
+title: "Sentiment Analysis using LSTM in R"
+subtitle: "A classification of COVID-19 Vaccine Tweets in Kenya"
 author: "Andrew Molo"
 format:
   html:
@@ -13,34 +14,102 @@ format:
 editor: visual
 ---
 
-## Context
-This code is part of my Msc project in Master of Science in Computer Science at the University of Nairobi.
-
 ## Introduction
+Sentiment Analysis is a function used to get sentiment information from sentences contained in a text. The sentiments generated can either be positive, negative or neutral. 
+In the data science field, technique used for deriving these sentiments is part of a larger discipline called Natural Language Processing (NLP). 
 
-Recurrent Neural Networks (RNN) are widely used for  Natural Language Processing (NLP) tasks because they're good at learning patterns in sequential data such as text.^[[1](https://www.kaggle.com/code/yashvmohod/coding-11-imdb-sentiment-analysis-with-lstm){target="_blank"}]^ LSTM stands for Long Short Term Memory.  Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+Recurrent Neural Networks (RNN), a machine learning model widely used in NLP, is good at learning patterns on textual data that's sequential.^[[1](https://www.kaggle.com/code/yashvmohod/coding-11-imdb-sentiment-analysis-with-lstm){target="_blank"}]^ Long short-term memory (LSTM) is a type of RNN with a higher memory power to remember outputs of current nodes for a more extended period to produce outcome(s) for the next node(s).^[[2](https://www.turing.com/kb/recurrent-neural-networks-and-lstm#long-short-term-memory-(lstm)-in-machine-learning){target="_blank"}]^  
 
-## Running Code
+Since twitter data contains text patterns that form trending topics and these patterns are somehow interconnected, I'll use LSTM in classifying COVID-19 vaccine tweets posted by Kenyans on Twitter, popularly known as *#KOT*. 
 
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+<!-- Recurrent Neural Networks (RNN) are widely used for  Natural Language Processing (NLP) tasks because they're good at learning patterns in sequential data such as text.^[[1](https://www.kaggle.com/code/yashvmohod/coding-11-imdb-sentiment-analysis-with-lstm){target="_blank"}]^ LSTM stands for Long Short Term Memory.  Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>. -->
 
+## R Script
+Load the sentiment analysis R script
 ```{r}
-1 + 1
+#| code-fold: false
+#| code-summary: Show code
+#| echo: true
+#| warning: false
+
+source("Scripts/Sentiment.Analysis.R", local = knitr::knit_global())
 ```
 
-You can add options to executable code like this
+
+## Natural Language Processing (NLP)
+
+### Wordcloud
+A word cloud constitutes textual data where the size of each text is a representative of its frequency count. The below word cloud shows the how frequent different user locations appeared on the COVID-19 tweets vaccines data frame. Nairobi had the highest tweets, followed by Mombasa then Nakuru. Other popular towns where *#KOT* posted tweets included Eldoret and Kisumu. There were tweets which were generally  geotagged as Kenya. 
 
 ```{r}
-#| echo: false
-2 * 2
+#| warning: false
+#| code-fold: false
+#| code-summary: Show code
+
+
+# Create a corpus based in the Location data column
+LocationCorpus <- Corpus(VectorSource(Data$user_location_1))
+LocationDTM <-  TermDocumentMatrix(LocationCorpus)
+
+# Create a matrix called LocationM based on Location DocumentTermMatrix
+LocationM <- as.matrix(LocationDTM)
+
+# Get the count per each word and create a dataframe
+count <- sort(rowSums(LocationM),decreasing=TRUE)
+DF <- data.frame(word = names(count),freq=count)
+
+# Wordcloud code
+set.seed(1234)
+ggplot(data = DF, 
+       aes(label = word, size = freq, col = as.character(freq))) + 
+  geom_text_wordcloud(rm_outside = TRUE, max_steps = 1,
+                      grid_size = 9, eccentricity = .1)+
+  scale_size_area(max_size = 20)+
+  scale_color_brewer(palette = "Paired", direction = -1)+
+  theme_void()
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).
+
+### Long short-term memory (LSTM)
+The initial split function create a single binary split of the data into training and testing set. Since we're working with textual data, we'll filter data to include only text that comprise of greater than 15 words Short texts (in this case tweets) have uninformative single words. ^[[4](https://smltar.com/dldnn.html#kickstarter){target="_blank"}]^  
+
+```{r}
+#| warning: false
+#| code-fold: false
+
+# Set seed to reproduce this work
+set.seed(2345)
+
+# Create a binary split called vaccine.tweets.split
+vaccine.tweets.split <- Data %>%
+  filter(nchar(text)>= 15) %>%
+  initial_split()
+
+# Create training and testing data
+training.data <- training(vaccine.tweets.split)
+testing.data <- testing(vaccine.tweets.split)
+```
+
+### Bag of Words (BoW)
+Bag of Words (BoW) is  a model representation that turns text into fixed length vectors by counting how many times each word appears. This process is also known as vectorisation.^[[3](https://victorzhou.com/blog/bag-of-words/){target="_blank"}]^ 
+First step in this process is tokenisation by unnesting tokens. Below is the code
+
+```{r}
+#| warning: false
+#| code-fold: false
+
+# Unnest tokens
+TidyData <- Data %>%
+  select(user_location_1, text) %>%
+  unnest_tokens(output = word, input = text)
+```
 
 
-
+ 
 ## References
 
 * https://www.kaggle.com/code/yashvmohod/coding-11-imdb-sentiment-analysis-with-lstm
 * https://www.kaggle.com/code/mich3935/women-revieews 
 * https://rpubs.com/tangerine/lstm-finance
+* https://blog.griddynamics.com/data-scientists-vocabulary-and-scientific-process-applied-to-social-movie-reviews/
+* https://www.kaggle.com/code/mich3935/women-revieews
