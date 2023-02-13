@@ -114,8 +114,12 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
   <li><a href="#natural-language-processing-nlp" id="toc-natural-language-processing-nlp" class="nav-link" data-scroll-target="#natural-language-processing-nlp">Natural Language Processing (NLP)</a>
   <ul>
   <li><a href="#wordcloud" id="toc-wordcloud" class="nav-link" data-scroll-target="#wordcloud">Wordcloud</a></li>
-  <li><a href="#long-short-term-memory-lstm" id="toc-long-short-term-memory-lstm" class="nav-link" data-scroll-target="#long-short-term-memory-lstm">Long short-term memory (LSTM)</a></li>
-  <li><a href="#bag-of-words-bow" id="toc-bag-of-words-bow" class="nav-link" data-scroll-target="#bag-of-words-bow">Bag of Words (BoW)</a></li>
+  <li><a href="#lstm" id="toc-lstm" class="nav-link" data-scroll-target="#lstm">LSTM</a>
+  <ul>
+  <li><a href="#training-and-testing-data" id="toc-training-and-testing-data" class="nav-link" data-scroll-target="#training-and-testing-data">Training and testing data</a></li>
+  <li><a href="#data-preprocessing" id="toc-data-preprocessing" class="nav-link" data-scroll-target="#data-preprocessing">Data preprocessing</a></li>
+  <li><a href="#modeling" id="toc-modeling" class="nav-link" data-scroll-target="#modeling">Modeling</a></li>
+  </ul></li>
   </ul></li>
   <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li>
   </ul>
@@ -195,32 +199,47 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 </div>
 </div>
 </section>
-<section id="long-short-term-memory-lstm" class="level3">
-<h3 class="anchored" data-anchor-id="long-short-term-memory-lstm">Long short-term memory (LSTM)</h3>
-<p>The initial split function create a single binary split of the data into training and testing set. Since we’re working with textual data, we’ll filter data to include only text that has &gt;15 characters. Short texts in this case tweets have uninformative single words. <sup>[<a href="https://smltar.com/dldnn.html#kickstarter" target="_blank">4</a>]</sup></p>
+<section id="lstm" class="level3">
+<h3 class="anchored" data-anchor-id="lstm">LSTM</h3>
+<section id="training-and-testing-data" class="level4">
+<h4 class="anchored" data-anchor-id="training-and-testing-data">Training and testing data</h4>
+<p>The <code>initial_split()</code> function creates a single binary split of the data into training and testing set. Since we’re working with textual data, we’ll filter data to include only text that comprise of greater than 15 characters. Short texts <em>(in this case tweets)</em> have uninformative single words. <sup>[<a href="https://smltar.com/dldnn.html#kickstarter" target="_blank">4</a>]</sup></p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Set seed to reproduce this work</span></span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">2345</span>)</span>
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Create a binary split called vaccine.tweets.split</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Create a binary split called vaccine.tweets.split. </span></span>
 <span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>vaccine.tweets.split <span class="ot">&lt;-</span> Data <span class="sc">%&gt;%</span></span>
 <span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="fu">nchar</span>(text)<span class="sc">&gt;=</span> <span class="dv">15</span>) <span class="sc">%&gt;%</span></span>
 <span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">initial_split</span>()</span>
 <span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Create training and testing data</span></span>
-<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>training.data <span class="ot">&lt;-</span> <span class="fu">training</span>(vaccine.tweets.split)</span>
-<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>testing.data <span class="ot">&lt;-</span> <span class="fu">testing</span>(vaccine.tweets.split)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Create training and testing data based on the number of tweets </span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Text column holds the tweets</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>training.data <span class="ot">&lt;-</span> <span class="fu">training</span>(vaccine.tweets.split)</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>testing.data <span class="ot">&lt;-</span> <span class="fu">testing</span>(vaccine.tweets.split)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
-<section id="bag-of-words-bow" class="level3">
-<h3 class="anchored" data-anchor-id="bag-of-words-bow">Bag of Words (BoW)</h3>
-<p>Bag of Words (BoW) is a model representation that turns text into fixed length vectors by counting how many times each word appears. This process is also known as vectorisation.<sup>[<a href="https://victorzhou.com/blog/bag-of-words/" target="_blank">3</a>]</sup> First step in this process is tokenisation by unnesting tokens. Below is the code</p>
+<section id="data-preprocessing" class="level4">
+<h4 class="anchored" data-anchor-id="data-preprocessing">Data preprocessing</h4>
+<p>Data pre-processing in LSTM model will first involve tokenisation. Tokenisation breaks raw text into smaller words and sentences called tokens. After tokenisation, filter the characters using the <code>step_tokenfilter()</code> function. This function filters tokens based on their frequency count.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Unnest tokens</span></span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>TidyData <span class="ot">&lt;-</span> Data <span class="sc">%&gt;%</span></span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(user_location_1, text) <span class="sc">%&gt;%</span></span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">unnest_tokens</span>(<span class="at">output =</span> word, <span class="at">input =</span> text)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>tweets.vaccine.rec <span class="ot">&lt;-</span> <span class="fu">recipe</span>(<span class="sc">~</span>text, <span class="at">data =</span> training.data) <span class="sc">%&gt;%</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">step_tokenize</span>(text) <span class="sc">%&gt;%</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">step_tokenfilter</span>(text, <span class="at">max_tokens=</span><span class="dv">100</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">step_sequence_onehot</span>(text, <span class="at">sequence_length =</span> <span class="dv">100</span>)</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>tweets.vaccine.rec <span class="ot">&lt;-</span> <span class="fu">prep</span>(tweets.vaccine.rec)</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>training.v2 <span class="ot">&lt;-</span> <span class="fu">bake</span>(tweets.vaccine.rec, <span class="at">new_data =</span> <span class="cn">NULL</span>, <span class="at">composition =</span> <span class="st">"matrix"</span>)</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="fu">class</span>(training.v2)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "matrix" "array" </code></pre>
 </div>
+</div>
+</section>
+<section id="modeling" class="level4">
+<h4 class="anchored" data-anchor-id="modeling">Modeling</h4>
+</section>
 </section>
 </section>
 <section id="references" class="level2">

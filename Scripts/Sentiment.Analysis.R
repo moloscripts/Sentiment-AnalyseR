@@ -1,20 +1,17 @@
 # Libraries and datasets ####
 
-## Machine learning####
-library(keras)
-library(tensorflow)
-library(tidymodels)
-## Data manipulation ####
 library(tidyverse)
 library(splitstackshape) 
-## EDA ####
 library(tm)
 library(ggwordcloud)
-## Text mining ####
+library(reticulate)
+library(tensorflow)
+library(keras)
+library(tidymodels)
 library(tidytext)
-## Turn off scientific displays ####
-options(scipen=999) 
+library(textrecipes)
 
+options(scipen=999) 
 Data <- read.csv("Data/Tweets2.csv")
 
 
@@ -66,28 +63,26 @@ testing.data <- testing(vaccine.tweets.split)
 
 
 
-### Tokenisation ####
-TidyData <- Data %>%
-  select(text) %>%
-  unnest_tokens(output = word, input = text)
+# Tokenise and filter the max number of words for use in analysis
+#Set max words and max length
+max_words <- 2e4
+max_length <- 30
 
-# Anti join stop words found in TidyDatabased on the  stop_words lexicon
-TidyData %<>%
-  anti_join(stop_words, by = "word")
+tweets.vaccine.rec <- recipe(~text, data = training.data) %>%
+  step_tokenize(text) %>%
+  step_tokenfilter(text, max_tokens=100) %>%
+  step_sequence_onehot(text, sequence_length = 100)
 
-
-
-TidyData %<>%
-  mutate(word = trimws(gsub("[^\\s]*[0-9][^\\s]*", "", word, perl = T))) %>%
-  filter(str_length(word) > 1) 
-
-TidyData %<>%
-  mutate(word = word %>% str_remove_all("[^[:alnum:]]") ) %>% # alnum = Alphanumeric characters. 
-  filter(str_length(word) > 1)
+tweets.vaccine.rec <- prep(tweets.vaccine.rec)
+training.v2 <- bake(tweets.vaccine.rec, new_data = NULL, composition = "matrix")
+class(training.v2)
 
 
-TidyData %>%
-  count(word, sort = TRUE) %>% # Count "word". "sort = TRUE" means that it will sort the words in descending order of number words.
-  head(20)
+# LSTM Model
+lstm.model <- keras_model_sequential() %>%
+  layer_embedding(input_dim = max_words+1, output_dim = 32) %>%
+  layer_lstm(units = 32) %>%
+  layer_dense(units = 1, activation = "sigmoid")
+lstm.model
 
-# 
+

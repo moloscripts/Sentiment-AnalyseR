@@ -5,7 +5,7 @@ author: "Andrew Molo"
 format:
   html:
     toc: true
-    toc-depth: 4
+    toc-depth: 5
     toc-location: left
     toc-title: "Table of Contents"
     # theme: flatly
@@ -23,6 +23,7 @@ Recurrent Neural Networks (RNN), a machine learning model widely used in NLP, is
 Since twitter data contains text patterns that form trending topics and these patterns are somehow interconnected, I'll use LSTM in classifying COVID-19 vaccine tweets posted by Kenyans on Twitter, popularly known as *#KOT*. 
 
 <!-- Recurrent Neural Networks (RNN) are widely used for  Natural Language Processing (NLP) tasks because they're good at learning patterns in sequential data such as text.^[[1](https://www.kaggle.com/code/yashvmohod/coding-11-imdb-sentiment-analysis-with-lstm){target="_blank"}]^ LSTM stands for Long Short Term Memory.  Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>. -->
+
 
 ## R Script
 Load the sentiment analysis R script
@@ -70,8 +71,10 @@ ggplot(data = DF,
 ```
 
 
-### Long short-term memory (LSTM)
-The initial split function create a single binary split of the data into training and testing set. Since we're working with textual data, we'll filter data to include only text that comprise of greater than 15 words Short texts (in this case tweets) have uninformative single words. ^[[4](https://smltar.com/dldnn.html#kickstarter){target="_blank"}]^  
+### LSTM
+
+#### Training and testing data
+The `initial_split()` function creates a single binary split of the data into training and testing set. Since we're working with textual data, we'll filter data to include only text that comprise of greater than 15 characters. Short texts _(in this case tweets)_ have uninformative single words. ^[[4](https://smltar.com/dldnn.html#kickstarter){target="_blank"}]^  
 
 ```{r}
 #| warning: false
@@ -80,29 +83,33 @@ The initial split function create a single binary split of the data into trainin
 # Set seed to reproduce this work
 set.seed(2345)
 
-# Create a binary split called vaccine.tweets.split
+# Create a binary split called vaccine.tweets.split. 
 vaccine.tweets.split <- Data %>%
   filter(nchar(text)>= 15) %>%
   initial_split()
 
-# Create training and testing data
+# Create training and testing data based on the number of tweets 
+# Text column holds the tweets
 training.data <- training(vaccine.tweets.split)
 testing.data <- testing(vaccine.tweets.split)
 ```
 
-### Bag of Words (BoW)
-Bag of Words (BoW) is  a model representation that turns text into fixed length vectors by counting how many times each word appears. This process is also known as vectorisation.^[[3](https://victorzhou.com/blog/bag-of-words/){target="_blank"}]^ 
-First step in this process is tokenisation by unnesting tokens. Below is the code
+#### Data preprocessing
+Data pre-processing in LSTM model will first involve tokenisation. Tokenisation breaks raw text into smaller words and sentences called tokens. After tokenisation, filter the characters using the `step_tokenfilter()` function.
+This function filters tokens based on their frequency count.
 
 ```{r}
-#| warning: false
-#| code-fold: false
+tweets.vaccine.rec <- recipe(~text, data = training.data) %>%
+  step_tokenize(text) %>%
+  step_tokenfilter(text, max_tokens=100) %>%
+  step_sequence_onehot(text, sequence_length = 100)
 
-# Unnest tokens
-TidyData <- Data %>%
-  select(user_location_1, text) %>%
-  unnest_tokens(output = word, input = text)
+tweets.vaccine.rec <- prep(tweets.vaccine.rec)
+training.v2 <- bake(tweets.vaccine.rec, new_data = NULL, composition = "matrix")
 ```
+
+#### Modeling
+
 
 
  
