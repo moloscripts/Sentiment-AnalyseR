@@ -1,6 +1,6 @@
 ---
-title: "Sentiment Analysis using LSTM in R"
-subtitle: "A classification of COVID-19 Vaccine Tweets in Kenya"
+title: "SentimeteR: Sentiment analysis dashboard of twitter data"
+subtitle: "Case study of using LSTM to predict sentiments of COVID-19 vaccine tweets, posted by Kenyans on Twitter (#KOT)"
 author: "Andrew Molo"
 format:
   html:
@@ -15,108 +15,234 @@ editor: visual
 ---
 
 ## Introduction
-Sentiment Analysis is a function used to get sentiment information from sentences contained in a text. The sentiments generated can either be positive, negative or neutral. 
-In the data science field, technique used for deriving these sentiments is part of a larger discipline called Natural Language Processing (NLP). 
 
-Recurrent Neural Networks (RNN), a machine learning model widely used in NLP, is good at learning patterns on textual data that's sequential.^[[1](https://www.kaggle.com/code/yashvmohod/coding-11-imdb-sentiment-analysis-with-lstm){target="_blank"}]^ Long short-term memory (LSTM) is a type of RNN with a higher memory power to remember outputs of current nodes for a more extended period to produce outcome(s) for the next node(s).^[[2](https://www.turing.com/kb/recurrent-neural-networks-and-lstm#long-short-term-memory-(lstm)-in-machine-learning){target="_blank"}]^  
+Sentiment Analysis is a function used to get sentiment information from sentences contained in a text. The sentiments generated can either be positive, negative or neutral. In the data science field, technique used for deriving these sentiments is part of a larger discipline called Natural Language Processing (NLP).
 
-Since twitter data contains text patterns that form trending topics and these patterns are somehow interconnected, I'll use LSTM in classifying COVID-19 vaccine tweets posted by Kenyans on Twitter, popularly known as *#KOT*. 
+Recurrent Neural Networks (RNN), a machine learning model widely used in NLP, is good at learning patterns on textual data that's sequential.^\[[1](https://www.kaggle.com/code/yashvmohod/coding-11-imdb-sentiment-analysis-with-lstm){target="_blank"}\]^ Long short-term memory (LSTM) is a type of RNN with a higher memory power to remember outputs of current nodes for a more extended period to produce outcome(s) for the next node(s).^\[[2](https://www.turing.com/kb/recurrent-neural-networks-and-lstm#long-short-term-memory-(lstm)-in-machine-learning){target="_blank"}\]^
+
+Since twitter data contains text patterns that form trending topics and these patterns are somehow interconnected, I'll use LSTM in classifying COVID-19 vaccine tweets posted by Kenyans on Twitter, popularly known as *#KOT*.
 
 <!-- Recurrent Neural Networks (RNN) are widely used for  Natural Language Processing (NLP) tasks because they're good at learning patterns in sequential data such as text.^[[1](https://www.kaggle.com/code/yashvmohod/coding-11-imdb-sentiment-analysis-with-lstm){target="_blank"}]^ LSTM stands for Long Short Term Memory.  Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>. -->
 
-
 ## R Script
+
 Load the sentiment analysis R script
+
 ```{r}
 #| code-fold: false
 #| code-summary: Show code
 #| echo: true
 #| warning: false
 
-source("Scripts/Sentiment.Analysis.R", local = knitr::knit_global())
+# Libraries
+library(saotd)
+library(ggwordcloud)
+library(tidyverse) 
+
+# Data
+Data <- read.csv("Data/Tweets2.csv")
+dim(Data)
+colnames(Data)
+```
+The data set has 1,135 rows and 14 columns. Above is output of the column names. Tweets are stored in the column name `text`. 
+
+## Data wrangling
+
+Prior to data wrangling, create a copy of the Raw Data. and split the data found in the location column to Town and Country respectively
+
+```{r}
+# Create a copy of the Data
+RawData <- Data
+
+# Use cSplit() found  splitstackshape to split contents found in the use_location column
+# user_location contains location data based on geo-tagged tweets 
+library(splitstackshape) 
+Data <- cSplit(Data, 'user_location', sep=",", type.convert=FALSE)
+```
+
+Contents in `user_location` column is location data based geo-tagged tweets. The data can either be one or two. Based on our split `user_location_1` contains town names  and `user_location_2` is country names.
+
+```{r}
+# Check contents of the new columns based on the split
+unique(Data$user_location_1)
+unique(Data$user_location_2)
 ```
 
 
-## Natural Language Processing (NLP)
+We'll use functions found in the package `saotd` to perform further data-preprocessing to the text data. `saotd` package, published in 2019 provides an interface for connecting to the Twitter API and internal functions that cleans, summarises and calculates sentiment scores using bing lexicon dictionary. ^\[[2](https://zenodo.org/record/2578973#.Y_Mn7rRBx4A){target="_blank"}\]^
 
-### Wordcloud
-A word cloud constitutes textual data where the size of each text is a representative of its frequency count. The below word cloud shows the how frequent different user locations appeared on the COVID-19 tweets vaccines data frame. Nairobi had the highest tweets, followed by Mombasa then Nakuru. Other popular towns where *#KOT* posted tweets included Eldoret and Kisumu. There were tweets which were generally  geotagged as Kenya. 
+Remove emoticons, punctuation marks and weblinks from the text column using `tweet_tidy()` function
+```{r}
+# TidyData will host the clean DF
+TidyTweets <- 
+  saotd::tweet_tidy(
+    DataFrame = Data
+  )
+```
+
+## N-grams summaries
+n-grams is a continuous sequence of words present in a text. The sequence can be one word (unigram), two-adjacent words(bi-grams) or three adjacent words(tri-grams).
 
 ```{r}
 #| warning: false
-#| code-fold: false
-#| code-summary: Show code
 
+# Create dataframes containing the top 50 n-grams.
 
-# Create a corpus based in the Location data column
-LocationCorpus <- Corpus(VectorSource(Data$user_location_1))
-LocationDTM <-  TermDocumentMatrix(LocationCorpus)
+# Unigram
+unigram.DF <- unigram(
+  DataFrame = TidyTweets
+)
 
-# Create a matrix called LocationM based on Location DocumentTermMatrix
-LocationM <- as.matrix(LocationDTM)
+# Bigram
+bigram.DF <- bigram(
+  DataFrame = TidyTweets
+)
 
-# Get the count per each word and create a dataframe
-count <- sort(rowSums(LocationM),decreasing=TRUE)
-DF <- data.frame(word = names(count),freq=count)
+# Trigram
+trigram.DF <- trigram(
+  DataFrame = TidyTweets
+)
 
-# Wordcloud code
-set.seed(1234)
-ggplot(data = DF, 
-       aes(label = word, size = freq, col = as.character(freq))) + 
-  geom_text_wordcloud(rm_outside = TRUE, max_steps = 1,
-                      grid_size = 9, eccentricity = .1)+
-  scale_size_area(max_size = 20)+
-  scale_color_brewer(palette = "Paired", direction = -1)+
-  theme_void()
+library(formattable)
+# Check the first 5 rows of most common trigrams 
+top5trigram <- trigram.DF %>%
+  top_n(5)
+
+# create a formattable object to display the top 5 trigrams
+formattable(top5trigram)
 ```
 
-
-### LSTM
-
-#### Training and testing data
-The `initial_split()` function creates a single binary split of the data into training and testing set. Since we're working with textual data, we'll filter data to include only text that comprise of greater than 15 characters. Short texts _(in this case tweets)_ have uninformative single words. ^[[4](https://smltar.com/dldnn.html#kickstarter){target="_blank"}]^  
+Furthermore, `saotd` package has a function called `bigram_network()` that plots a network graph of all b-grams present in the dataframe
 
 ```{r}
-#| warning: false
-#| code-fold: false
-
-# Set seed to reproduce this work
-set.seed(2345)
-
-# Create a binary split called vaccine.tweets.split. 
-vaccine.tweets.split <- Data %>%
-  filter(nchar(text)>= 15) %>%
-  initial_split()
-
-# Create training and testing data based on the number of tweets 
-# Text column holds the tweets
-training.data <- training(vaccine.tweets.split)
-testing.data <- testing(vaccine.tweets.split)
+ # Plot a network graph of bigram showing the relationship between two words
+bigram_network(bigram.DF, node_color = "red", set_seed = 1234, layout = "star", number = 90)
 ```
+From the plot, the word with the most common associations is COVID19, the thickness between two vertices is an indication of the strength of the association. Therefore COVID19 vertex is is highly associated with vaccine, covidvaccine, spuntnikv and vaccines.
 
-#### Data preprocessing
-Data pre-processing in LSTM model will first involve tokenisation. Tokenisation breaks raw text into smaller words and sentences called tokens. After tokenisation, filter the characters using the `step_tokenfilter()` function.
-This function filters tokens based on their frequency count.
+## Deriving sentiment scores
+Sentiment scores are derived based on classification of emotions present in the data. Classification of these emotions is done using the `nrc` lexicon
+which categorizes each word present in the tweets to one of the 10 sentiment categories of anger, anticipation, disgust, fear, joy, negative, positive, sadness, surprise and trust. 
+These emotions are further classified numerically using positive numbers and negative numbers. The higher the positive number in each emotion, the higher the degree of positive sentiment that word has. Vice-versa applies. 
 
-```{r}
-tweets.vaccine.rec <- recipe(~text, data = training.data) %>%
-  step_tokenize(text) %>%
-  step_tokenfilter(text, max_tokens=100) %>%
-  step_sequence_onehot(text, sequence_length = 100)
-
-tweets.vaccine.rec <- prep(tweets.vaccine.rec)
-training.v2 <- bake(tweets.vaccine.rec, new_data = NULL, composition = "matrix")
-```
-
-#### Modeling
+The final product of classification is a trichotomous response variable called `sentiment` which holds three observations: `positve`, `negative` and `neutral`. Positive will hold words that have a sentiment score of 0 and above, negative classification will hold words that have a score -1 and below and finally,  neutral classifications will hold values that have a score of 0. 
 
 
 
- 
-## References
+numeric aggregation of the classifications is done to categorise the emotions as positive or negative. Numeric classification will entail measurung the degree of positive, negative or neutral. A higher positive number of words that have 
 
-* https://www.kaggle.com/code/yashvmohod/coding-11-imdb-sentiment-analysis-with-lstm
-* https://www.kaggle.com/code/mich3935/women-revieews 
-* https://rpubs.com/tangerine/lstm-finance
-* https://blog.griddynamics.com/data-scientists-vocabulary-and-scientific-process-applied-to-social-movie-reviews/
-* https://www.kaggle.com/code/mich3935/women-revieews
+
+# References
+
+* https://towardsdatascience.com/twitter-text-analysis-in-r-ed7b81ecdb9a
+
+
+
+<!-- ## Natural Language Processing (NLP) -->
+
+<!-- ### Wordcloud -->
+
+<!-- A word cloud constitutes textual data where the size of each text is a representative of its frequency count. The below word cloud shows the how frequent different user locations appeared on the COVID-19 tweets vaccines data frame. Nairobi had the highest tweets, followed by Mombasa then Nakuru. Other popular towns where *#KOT* posted tweets included Eldoret and Kisumu. There were tweets which were generally geotagged as Kenya. -->
+
+<!-- ```{r} -->
+<!-- #| warning: false -->
+<!-- #| code-fold: false -->
+<!-- #| code-summary: Show code -->
+
+
+<!-- # Create a corpus based in the Location data column -->
+<!-- LocationCorpus <- Corpus(VectorSource(Data$user_location_1)) -->
+<!-- LocationDTM <-  TermDocumentMatrix(LocationCorpus) -->
+
+<!-- # Create a matrix called LocationM based on Location DocumentTermMatrix -->
+<!-- LocationM <- as.matrix(LocationDTM) -->
+
+<!-- # Get the count per each word and create a dataframe -->
+<!-- count <- sort(rowSums(LocationM),decreasing=TRUE) -->
+<!-- DF <- data.frame(word = names(count),freq=count) -->
+
+<!-- # Wordcloud code -->
+<!-- set.seed(1234) -->
+<!-- ggplot(data = DF,  -->
+<!--        aes(label = word, size = freq, col = as.character(freq))) +  -->
+<!--   geom_text_wordcloud(rm_outside = TRUE, max_steps = 1, -->
+<!--                       grid_size = 9, eccentricity = .1)+ -->
+<!--   scale_size_area(max_size = 20)+ -->
+<!--   scale_color_brewer(palette = "Paired", direction = -1)+ -->
+<!--   theme_void() -->
+<!-- ``` -->
+
+<!-- Next step is to classify tweets into the different emotions/sentiments. -->
+
+<!-- ### LSTM -->
+
+<!-- #### Training and testing data -->
+
+<!-- The `initial_split()` function creates a single binary split of the data into training and testing set. Since we're working with textual data, we'll filter data to include only text that comprise of greater than 15 characters. Short texts *(in this case tweets)* have uninformative single words. ^\[[4](https://smltar.com/dldnn.html#kickstarter){target="_blank"}\]^ -->
+
+<!-- ```{r} -->
+
+<!-- #| warning: false -->
+
+<!-- #| code-fold: false -->
+
+<!-- # Set seed to reproduce this work -->
+
+<!-- set.seed(2345) -->
+
+<!-- # Create a binary split called vaccine.tweets.split.  -->
+
+<!-- vaccine.tweets.split <- Data %>% -->
+
+<!--   filter(nchar(text)>= 15) %>% -->
+
+<!--   initial_split() -->
+
+<!-- # Create training and testing data based on the number of tweets  -->
+
+<!-- # Text column holds the tweets -->
+
+<!-- training.data <- training(vaccine.tweets.split) -->
+
+<!-- testing.data <- testing(vaccine.tweets.split) -->
+
+<!-- ``` -->
+
+<!-- #### Data preprocessing -->
+
+<!-- Data pre-processing in LSTM model will first involve tokenisation. Tokenisation breaks raw text into smaller words and sentences called tokens. After tokenisation, filter the characters using the `step_tokenfilter()` function. This function filters tokens based on their frequency count. -->
+
+<!-- ```{r} -->
+
+<!-- tweets.vaccine.rec <- recipe(~text, data = training.data) %>% -->
+
+<!--   step_tokenize(text) %>% -->
+
+<!--   step_tokenfilter(text, max_tokens=100) %>% -->
+
+<!--   step_sequence_onehot(text, sequence_length = 100) -->
+
+<!-- tweets.vaccine.rec <- prep(tweets.vaccine.rec) -->
+
+<!-- training.v2 <- bake(tweets.vaccine.rec, new_data = NULL, composition = "matrix") -->
+
+<!-- ``` -->
+
+<!-- #### Modeling -->
+
+<!-- ## References -->
+
+<!-- -   https://www.kaggle.com/code/yashvmohod/coding-11-imdb-sentiment-analysis-with-lstm -->
+
+<!-- -   https://www.kaggle.com/code/mich3935/women-revieews -->
+
+<!-- -   https://rpubs.com/tangerine/lstm-finance -->
+
+<!-- -   https://blog.griddynamics.com/data-scientists-vocabulary-and-scientific-process-applied-to-social-movie-reviews/ -->
+
+<!-- -   https://www.kaggle.com/code/mich3935/women-revieews -->
+
+<!-- -   https://www.tidytextmining.com/sentiment.html -->
+
+<!-- -   https://ladal.edu.au/sentiment.html  -->
+

@@ -3,26 +3,116 @@
 library(tidyverse)
 library(splitstackshape) 
 library(tm)
-library(ggwordcloud)
-library(reticulate)
-library(tensorflow)
-library(keras)
 library(tidymodels)
 library(tidytext)
 library(textrecipes)
+library(ggwordcloud)
+library(textdata)
+library(saotd)
+library(syuzhet)
+
+
+# library(keras)
+# library(tensorflow)
+# library(reticulate)
+# 
+# install.packages("tensorflow")
+# library(reticulate)
+# # version <- "3.9.12"
+# # install_python(version)
+# path_to_python <- install_python()
+# virtualenv_create("r-reticulate", python = path_to_python)
+# library(tensorflow)
+# install_tensorflow()
 
 options(scipen=999) 
 Data <- read.csv("Data/Tweets2.csv")
 
-
 # Data wrangling & EDA ####
-
 # Create a copy
 RawData <- Data
 
 # Split the column user_location to Location
 Data <- cSplit(Data, 'user_location', sep=",", type.convert=FALSE)
 
+# Remove all the emoticons, punctuation marks, 
+# weblinks and finally converts the data to a tidy structure
+TidyTweets <- 
+  saotd::tweet_tidy(
+    DataFrame = Data)
+
+
+# Investigate un-igrams, bi-grams and tri-grams
+unigram.DF <- unigram(
+  DataFrame = TidyTweets
+)
+
+bigram.DF <- bigram(
+  DataFrame = TidyTweets
+)
+
+trigram.DF <- trigram(
+  DataFrame = TidyTweets
+)
+
+
+# Network diagram of bigrams
+bigram_network(bigram.DF, node_color = "red", set_seed = 1234, layout = "star", number = 70)
+
+# Sentiment classifiers based on Location
+location.senti.score <- data_frame(id=TidyTweets$user_location_1, text = TidyTweets$text) %>% 
+  unnest_tokens(word, text) %>%
+  anti_join(stop_words) %>%
+  inner_join(get_sentiments("nrc")) %>%
+  mutate(score = ifelse(sentiment=='positive',1,
+                        ifelse(sentiment=='joy',1,
+                               ifelse(sentiment=='anticipation',1,
+                                      ifelse(sentiment=='trust',1,
+                                             ifelse(sentiment=='surprise',1,-1)))))) %>%
+  group_by(id) %>%
+  summarise(total_score = sum(score)) %>%
+  mutate(sentiment = ifelse(total_score>0,'positive',ifelse(total_score<0,'negative','neutral')))
+
+
+# Overall sentiscore
+TidyTweets <- tibble::rowid_to_column(TidyTweets, "id")
+senti.score <- data_frame(id=TidyTweets$id, text = TidyTweets$text) %>% 
+  unnest_tokens(word, text) %>%
+  anti_join(stop_words) %>%
+  inner_join(get_sentiments("nrc")) %>%
+  mutate(score = ifelse(sentiment=='positive',1,ifelse(sentiment=='joy',1,ifelse(sentiment=='anticipation',1,ifelse(sentiment=='trust',1,ifelse(sentiment=='surprise',1,-1)))))) %>%
+  group_by(id) %>%
+  summarise(total_score = sum(score)) %>%
+  mutate(sentiment = ifelse(total_score>0,'positive',ifelse(total_score<0,'negative','neutral')))
+# get the dataframe which contains tweet message, id and it's sentiment
+senti.score <- TidyTweets %>% inner_join(senti.score, by='id') %>% select('id', 'text','sentiment')
+
+# NLP
+
+
+
+
+
+
+
+
+
+# Remove URL and Hashtags from the tweets text
+Data$text <- gsub("http.*","",Data$text)
+Data$text <- gsub("https.*","",Data$text)
+Data$text <- gsub("#.*","",Data$text)
+Data$text <- gsub("@.*","",Data$text)
+
+# 
+
+Data$text <- Data %>%
+  get_sentiment(Data$text)
+
+Data <- Data %>%
+  left_join(tidytext::get_sentiments("nrc")) %>%
+  mutate(sentiment = factor(sentiment))
+View(Data)
+  
 # Create a corpus based in the Location
 LocationCorpus <- Corpus(VectorSource(Data$user_location_1))
 LocationDTM <-  TermDocumentMatrix(LocationCorpus)
