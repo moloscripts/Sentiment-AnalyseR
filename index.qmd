@@ -1,6 +1,6 @@
 ---
-title: "SentimeteR: Sentiment analysis dashboard of twitter data"
-subtitle: "Case study of using LSTM to predict sentiments of COVID-19 vaccine tweets, posted by Kenyans on Twitter (#KOT)"
+title: "SentimeteR dashboard"
+subtitle: "A dashboard report of COVID19 vaccine tweets in Kenya, based on text analysis and sentiment analysis using LSTM"
 author: "Andrew Molo"
 format:
   html:
@@ -22,11 +22,13 @@ Recurrent Neural Networks (RNN), a machine learning model widely used in NLP, is
 
 Since twitter data contains text patterns that form trending topics and these patterns are somehow interconnected, I'll use LSTM in classifying COVID-19 vaccine tweets posted by Kenyans on Twitter, popularly known as *#KOT*.
 
+Results of this classification will be presented in a shinyDashbaord. This piece documents the steps used to munge, model and visualise the data
+
 <!-- Recurrent Neural Networks (RNN) are widely used for  Natural Language Processing (NLP) tasks because they're good at learning patterns in sequential data such as text.^[[1](https://www.kaggle.com/code/yashvmohod/coding-11-imdb-sentiment-analysis-with-lstm){target="_blank"}]^ LSTM stands for Long Short Term Memory.  Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>. -->
 
-## R Script
+## Global variables
 
-Load the sentiment analysis R script
+Load libraries and datasets sentiment analysis R script
 
 ```{r}
 #| code-fold: false
@@ -36,15 +38,18 @@ Load the sentiment analysis R script
 
 # Libraries
 library(saotd)
-library(ggwordcloud)
 library(tidyverse) 
+library(syuzhet)
+library(tidytext)
+
 
 # Data
 Data <- read.csv("Data/Tweets2.csv")
 dim(Data)
 colnames(Data)
 ```
-The data set has 1,135 rows and 14 columns. Above is output of the column names. Tweets are stored in the column name `text`. 
+
+The data set has 1,135 rows and 14 columns. Above is output of the column names. Tweets are stored in the column name `text`.
 
 ## Data wrangling
 
@@ -60,7 +65,7 @@ library(splitstackshape)
 Data <- cSplit(Data, 'user_location', sep=",", type.convert=FALSE)
 ```
 
-Contents in `user_location` column is location data based geo-tagged tweets. The data can either be one or two. Based on our split `user_location_1` contains town names  and `user_location_2` is country names.
+Contents in `user_location` column is location data based geo-tagged tweets. The data can either be one or two. Based on our split `user_location_1` contains town names and `user_location_2` is country names.
 
 ```{r}
 # Check contents of the new columns based on the split
@@ -68,10 +73,10 @@ unique(Data$user_location_1)
 unique(Data$user_location_2)
 ```
 
+We'll use functions found in the package `saotd` to perform further preprocessing to the text data. `saotd` package, published in 2019 provides functions for cleaning, summarising, visualising and modeling of twitter data. ^\[[2](https://zenodo.org/record/2578973#.Y_Mn7rRBx4A){target="_blank"}\]^. We'll borrow two functions to summarise our data. `tweet_tidy()` and 3 functions for generating n-grams.
 
-We'll use functions found in the package `saotd` to perform further data-preprocessing to the text data. `saotd` package, published in 2019 provides an interface for connecting to the Twitter API and internal functions that cleans, summarises and calculates sentiment scores using bing lexicon dictionary. ^\[[2](https://zenodo.org/record/2578973#.Y_Mn7rRBx4A){target="_blank"}\]^
+Use, `tweet_tidy()` to remove emoticons, punctuation marks and weblinks from the text column
 
-Remove emoticons, punctuation marks and weblinks from the text column using `tweet_tidy()` function
 ```{r}
 # TidyData will host the clean DF
 TidyTweets <- 
@@ -80,7 +85,8 @@ TidyTweets <-
   )
 ```
 
-## N-grams summaries
+### N-grams summaries
+
 n-grams is a continuous sequence of words present in a text. The sequence can be one word (unigram), two-adjacent words(bi-grams) or three adjacent words(tri-grams).
 
 ```{r}
@@ -88,17 +94,17 @@ n-grams is a continuous sequence of words present in a text. The sequence can be
 
 # Create dataframes containing the top 50 n-grams.
 
-# Unigram
+# Unigram dataframe
 unigram.DF <- unigram(
   DataFrame = TidyTweets
 )
 
-# Bigram
+# Bigram dataframe
 bigram.DF <- bigram(
   DataFrame = TidyTweets
 )
 
-# Trigram
+# Trigram dataframe
 trigram.DF <- trigram(
   DataFrame = TidyTweets
 )
@@ -118,25 +124,49 @@ Furthermore, `saotd` package has a function called `bigram_network()` that plots
  # Plot a network graph of bigram showing the relationship between two words
 bigram_network(bigram.DF, node_color = "red", set_seed = 1234, layout = "star", number = 90)
 ```
+
 From the plot, the word with the most common associations is COVID19, the thickness between two vertices is an indication of the strength of the association. Therefore COVID19 vertex is is highly associated with vaccine, covidvaccine, spuntnikv and vaccines.
 
-## Deriving sentiment scores
-Sentiment scores are derived based on classification of emotions present in the data. Classification of these emotions is done using the `nrc` lexicon
-which categorizes each word present in the tweets to one of the 10 sentiment categories of anger, anticipation, disgust, fear, joy, negative, positive, sadness, surprise and trust. 
-These emotions are further classified numerically using positive numbers and negative numbers. The higher the positive number in each emotion, the higher the degree of positive sentiment that word has. Vice-versa applies. 
+### Deriving sentiment scores
 
-The final product of classification is a trichotomous response variable called `sentiment` which holds three observations: `positve`, `negative` and `neutral`. Positive will hold words that have a sentiment score of 0 and above, negative classification will hold words that have a score -1 and below and finally,  neutral classifications will hold values that have a score of 0. 
+Sentiment scores are derived based on classification of emotions present in the data. Classification of these emotions is done using the `nrc` lexicon which categorizes each word present in the tweets to one of the 10 sentiment categories of anger, anticipation, disgust, fear, joy, negative, positive, sadness, surprise and trust. These emotions are further classified numerically using positive numbers and negative numbers. The higher the positive number in each emotion, the higher the degree of positive sentiment that word has. Vice-versa applies.
 
+The final product of classification is a trichotomous response variable called `sentiment` which holds three observations: `positve`, `negative` and `neutral`. Positive will hold words that have a sentiment score of 0 and above, negative classification will hold words that have a score -1 and below and finally, neutral classifications will hold words that have a score of 0.
 
+```{r}
+#| warning: false
 
-numeric aggregation of the classifications is done to categorise the emotions as positive or negative. Numeric classification will entail measurung the degree of positive, negative or neutral. A higher positive number of words that have 
+# Create a new column called id
+TidyTweets <- tibble::rowid_to_column(TidyTweets, "id")
 
+# Create a dataframe called senti.score, that will have a response variable called sentiment 
+senti.score <- data_frame(id=TidyTweets$id, text = TidyTweets$text) %>% 
+  unnest_tokens(word, text) %>%
+  anti_join(stop_words) %>%
+  inner_join(get_sentiments("nrc")) %>%
+  mutate(score = ifelse(sentiment=='positive',1,
+                        ifelse(sentiment=='joy',1,
+                               ifelse(sentiment=='anticipation',1,
+                                      ifelse(sentiment=='trust',1,
+                                             ifelse(sentiment=='surprise',1,-1)))))) %>%
+  group_by(id) %>%
+  summarise(total_score = sum(score)) %>%
+  mutate(sentiment = ifelse(total_score>0,'positive',ifelse(total_score<0,'negative','neutral')))
+
+# get the dataframe which contains tweet message, id and it's sentiment
+senti.score <- TidyTweets %>% inner_join(senti.score, by='id') %>% select('id', 'text','sentiment')
+
+# Check the first five rows of the new data frame created
+formattable(head(senti.score))
+```
+
+## LSTM
+
+### Splitting training and testing data
 
 # References
 
-* https://towardsdatascience.com/twitter-text-analysis-in-r-ed7b81ecdb9a
-
-
+-   https://towardsdatascience.com/twitter-text-analysis-in-r-ed7b81ecdb9a
 
 <!-- ## Natural Language Processing (NLP) -->
 
@@ -145,31 +175,47 @@ numeric aggregation of the classifications is done to categorise the emotions as
 <!-- A word cloud constitutes textual data where the size of each text is a representative of its frequency count. The below word cloud shows the how frequent different user locations appeared on the COVID-19 tweets vaccines data frame. Nairobi had the highest tweets, followed by Mombasa then Nakuru. Other popular towns where *#KOT* posted tweets included Eldoret and Kisumu. There were tweets which were generally geotagged as Kenya. -->
 
 <!-- ```{r} -->
+
 <!-- #| warning: false -->
+
 <!-- #| code-fold: false -->
+
 <!-- #| code-summary: Show code -->
 
-
 <!-- # Create a corpus based in the Location data column -->
+
 <!-- LocationCorpus <- Corpus(VectorSource(Data$user_location_1)) -->
+
 <!-- LocationDTM <-  TermDocumentMatrix(LocationCorpus) -->
 
 <!-- # Create a matrix called LocationM based on Location DocumentTermMatrix -->
+
 <!-- LocationM <- as.matrix(LocationDTM) -->
 
 <!-- # Get the count per each word and create a dataframe -->
+
 <!-- count <- sort(rowSums(LocationM),decreasing=TRUE) -->
+
 <!-- DF <- data.frame(word = names(count),freq=count) -->
 
 <!-- # Wordcloud code -->
+
 <!-- set.seed(1234) -->
+
 <!-- ggplot(data = DF,  -->
+
 <!--        aes(label = word, size = freq, col = as.character(freq))) +  -->
+
 <!--   geom_text_wordcloud(rm_outside = TRUE, max_steps = 1, -->
+
 <!--                       grid_size = 9, eccentricity = .1)+ -->
+
 <!--   scale_size_area(max_size = 20)+ -->
+
 <!--   scale_color_brewer(palette = "Paired", direction = -1)+ -->
+
 <!--   theme_void() -->
+
 <!-- ``` -->
 
 <!-- Next step is to classify tweets into the different emotions/sentiments. -->
@@ -245,4 +291,3 @@ numeric aggregation of the classifications is done to categorise the emotions as
 <!-- -   https://www.tidytextmining.com/sentiment.html -->
 
 <!-- -   https://ladal.edu.au/sentiment.html  -->
-
